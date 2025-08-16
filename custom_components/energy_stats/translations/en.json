@@ -1,0 +1,24 @@
+{
+    "config": {
+        "step": {
+            "user": {
+                "data": {
+                    "battery_energy": "Battery Stored Energy",
+                    "battery_power": "Battery Power Sensor",
+                    "car_charging_energy": "Car Charging Energy Sensor",
+                    "car_charging_power": "Car Charging Power Sensor",
+                    "car_connected": "Car Connected Sensor",
+                    "car_soc": "Car SoC",
+                    "daily_reset_time": "Daily Reset Time",
+                    "grid_in_energy": "Grid Energy In Sensor",
+                    "grid_out_energy": "Grid Energy Out Sensor",
+                    "grid_power": "Grid Power Sensor",
+                    "pv_energy": "PV Energy Sensor",
+                    "pv_power": "PV Power Sensor"
+                },
+                "description": "Please set the reset time and the sensor entities.",
+                "title": "Energy Stats Konfiguration"
+            }
+        }
+    }
+}
