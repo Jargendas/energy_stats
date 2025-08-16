@@ -1,4 +1,5 @@
 {
+  "version": "1.0.0",
   "domain": "energy_stats",
   "name": "Energy Stats",
   "codeowners": [

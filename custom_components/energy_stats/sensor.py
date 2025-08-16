@@ -2,11 +2,9 @@ from datetime import date, datetime
 from decimal import Decimal
 import logging
 
-from homeassistant.components.energy_stats.coordinator import EnergyStatsCoordinator
-from homeassistant.components.sensor import SensorEntity
-from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.typing import StateType
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers import entity_registry as er
 
 from .const import CALCULATED_VALUES, DOMAIN
