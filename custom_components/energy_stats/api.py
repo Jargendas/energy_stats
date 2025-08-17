@@ -23,4 +23,5 @@ class EnergyStatsAPI(HomeAssistantView):
 
 
 def async_setup_api(hass, coordinator):
+    _LOGGER.debug("Executing async_setup_api...")
     hass.http.register_view(EnergyStatsAPI(coordinator))

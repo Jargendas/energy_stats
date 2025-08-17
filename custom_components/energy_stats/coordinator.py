@@ -21,7 +21,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             hass=hass,
             logger=_LOGGER,
             name="Energy Stats",
-            update_interval=timedelta(seconds=5),
+            update_interval=timedelta(seconds=15),
             config_entry=entry,
         )
         self.entry_id = entry.entry_id
@@ -39,7 +39,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         _LOGGER.info("Update interval is %s", self.update_interval)
 
     async def _async_update_data(self):
-        _LOGGER.debug("Running update")
+        _LOGGER.debug("Executing _async_update_data")
 
         if not self._energy_sums:
             stored = await self._store.async_load()
@@ -82,10 +82,8 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             if not entity_id:
                 return None
             st = state.get(entity_id)
-            # _LOGGER.info(f"{entity_id}: {st}")
             if not st or st.state in ("unknown", "unavailable", None):
                 return None
-            _LOGGER.debug(str(st.state))
             try:
                 return float(st.state)
             except (ValueError, TypeError):
@@ -106,6 +104,8 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                     raise UpdateFailed(f"Entity {entity_id} is not ready!")
                 raw_vals[key] = value
                 _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
+            else:
+                raw_vals[key] = None
 
         # --- Momentane Werte (Leistung) ---
         if raw_vals["grid_power"] is not None:

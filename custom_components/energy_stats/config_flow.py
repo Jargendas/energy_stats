@@ -2,6 +2,9 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
 from .const import DOMAIN, SENSOR_KEYS, CONF_DAILY_RESET
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -10,18 +13,22 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, vol.Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        _LOGGER.debug("Executing async_step_user...")
         errors = {}
         if user_input is not None:
+            _LOGGER.debug("Processing user input...")
             data = {}
             for k in SENSOR_KEYS.keys():
                 data[k] = user_input.get(k)
             data[CONF_DAILY_RESET] = user_input.get(CONF_DAILY_RESET)
-            entries = self._async_current_entries()
-            if entries:
-                self.hass.config_entries.async_update_entry(entries[0], data=user_input)
+
+            if self.source == config_entries.SOURCE_RECONFIGURE:
+                entry = self._get_reconfigure_entry()
+                self.hass.config_entries.async_update_entry(entry, data=data)
+                await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="Reconfigured!")
-            else:
-                return self.async_create_entry(title="Energy Stats", data=data)
+
+            return self.async_create_entry(title="Energy Stats", data=data)
 
         schema_dict = {}
 
@@ -72,12 +79,5 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, vol.Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        if user_input is not None:
-            entry = self.context.get("entry")
-            if entry is None:
-                return self.async_abort(reason="no_entry_found")
-            self.hass.config_entries.async_update_entry(entry, data=user_input)
-            await self.hass.config_entries.async_reload(entry.entry_id)
-            return self.async_abort(reason="Reconfigured!")
-
-        return await self.async_step_user(None)
+        _LOGGER.debug("Executing async_step_reconfigure...")
+        return await self.async_step_user(user_input)
