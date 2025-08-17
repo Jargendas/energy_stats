@@ -86,7 +86,26 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             if not st or st.state in ("unknown", "unavailable", None):
                 return None
             try:
-                return float(st.state)
+                val = float(st.state)
+
+                unit = st.attributes.get("unit_of_measurement")
+                if unit:
+                    unit = unit.lower()
+                    if unit in ("kw", "kwatt", "kilowatt"):
+                        return val * 1000  # → W
+                    if unit in ("kwh", "kwhours", "kilowatt-hour", "kilowatt hour"):
+                        return val * 1000  # → Wh
+                    if unit in ("w", "watt"):
+                        return val
+                    if unit in ("wh", "watt-hour", "watt hour"):
+                        return val
+
+                    _LOGGER.warning(
+                        f"Unknown unit {unit} for {entity_id}, keeping raw value {val}"
+                    )
+
+                return val
+
             except (ValueError, TypeError):
                 if st.state == "on":
                     return True

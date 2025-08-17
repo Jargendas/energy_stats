@@ -18,10 +18,10 @@ SENSOR_KEYS = {
 
 # Die finalen JSON-Keys, die die Integration ausgeben soll (und als Sensoren angelegt werden)
 CALCULATED_VALUES = {
-    "grid_in_energy_daily": ["Daily Imported Energy", "energy", "total", "kWh"],
-    "grid_out_energy_daily": ["Daily Fed-In Energy", "energy", "total", "kWh"],
-    "pv_energy_daily": ["Daily Generated PV Energy", "energy", "total", "kWh"],
-    "home_energy_daily": ["Daily Consumed Home Energy", "energy", "total", "kWh"],
+    "grid_in_energy_daily": ["Daily Imported Energy", "energy", "total", "Wh"],
+    "grid_out_energy_daily": ["Daily Fed-In Energy", "energy", "total", "Wh"],
+    "pv_energy_daily": ["Daily Generated PV Energy", "energy", "total", "Wh"],
+    "home_energy_daily": ["Daily Consumed Home Energy", "energy", "total", "Wh"],
     "home_energy_mix_daily": ["Energy Mix Home", None, "measurement", None],
     "battery_energy_mix_daily": ["Energy Mix Battery", None, "measurement", None],
     "car_charging_energy_mix": [
