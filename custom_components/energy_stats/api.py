@@ -17,7 +17,8 @@ class EnergyStatsAPI(HomeAssistantView):
 
     async def get(self, request):
         data = self.coordinator.data
-        data.pop("calculated_keys")
+        if "calculated_keys" in data:
+            data.pop("calculated_keys")
         _LOGGER.debug("Returning data: " + str(data))
         return web.json_response(data)
 
