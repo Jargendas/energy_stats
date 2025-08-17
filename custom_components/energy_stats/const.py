@@ -1,3 +1,5 @@
+"""Constants for Energy Stats integration."""
+
 DOMAIN = "energy_stats"
 CONF_DAILY_RESET = "daily_reset_time"
 
@@ -16,7 +18,6 @@ SENSOR_KEYS = {
     "car_soc": ["battery", "optional"],
 }
 
-# Die finalen JSON-Keys, die die Integration ausgeben soll (und als Sensoren angelegt werden)
 CALCULATED_VALUES = {
     "grid_in_energy_daily": ["Daily Imported Energy", "energy", "total", "Wh"],
     "grid_out_energy_daily": ["Daily Fed-In Energy", "energy", "total", "Wh"],

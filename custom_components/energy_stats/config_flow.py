@@ -1,25 +1,30 @@
+"""Configuration flow for the Energy Stats integration."""
+
+import logging
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.helpers import selector
-from .const import DOMAIN, SENSOR_KEYS, CONF_DAILY_RESET
-import logging
+
+from .const import CONF_DAILY_RESET, DOMAIN, SENSOR_KEYS
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow class for Energy Stats integration."""
+
     VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, vol.Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        """Execute main configuraton step."""
         _LOGGER.debug("Executing async_step_user...")
         errors = {}
         if user_input is not None:
             _LOGGER.debug("Processing user input...")
-            data = {}
-            for k in SENSOR_KEYS.keys():
-                data[k] = user_input.get(k)
+            data = {k: user_input.get(k) for k in SENSOR_KEYS}
             data[CONF_DAILY_RESET] = user_input.get(CONF_DAILY_RESET)
 
             if self.source == config_entries.SOURCE_RECONFIGURE:
@@ -43,17 +48,17 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         ] = selector.TimeSelector()
 
         for key, params in SENSOR_KEYS.items():
-            volKey = None
+            vol_key = None
             if params[1] == "optional":
-                volKey = vol.Optional(
+                vol_key = vol.Optional(
                     key, description={"suggested_value": defaults.get(key)}
                 )
             else:
-                volKey = vol.Required(
+                vol_key = vol.Required(
                     key, description={"suggested_value": defaults.get(key)}
                 )
 
-            schema_dict[volKey] = selector.selector(
+            schema_dict[vol_key] = selector.selector(
                 {
                     "entity": {
                         "filter": {
@@ -66,7 +71,6 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             )
 
-        # Build voluptuous schema but we will use selectors in UI - Home Assistant will map entity pickers by key
         data_schema = vol.Schema(schema_dict)
 
         return self.async_show_form(
@@ -79,5 +83,6 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, vol.Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        """Run reconfiguration of the integration."""
         _LOGGER.debug("Executing async_step_reconfigure...")
         return await self.async_step_user(user_input)

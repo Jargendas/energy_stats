@@ -1,9 +1,10 @@
+"""Energy Stats coordinator integration."""
+
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -16,7 +17,10 @@ STORAGE_KEY = "energy_stats_data"
 
 
 class EnergyStatsCoordinator(DataUpdateCoordinator):
+    """Coordinator class for the module."""
+
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        """Initialize coordinator with provided config entry."""
         self.entry = entry
         self.hass = hass
         super().__init__(
@@ -27,20 +31,20 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             config_entry=entry,
         )
         self.entry_id = entry.entry_id
-        self.sensors = {k: entry.data.get(k) for k in SENSOR_KEYS.keys()}
+        self.sensors = {k: entry.data.get(k) for k in SENSOR_KEYS}
         self.daily_reset = entry.data.get(CONF_DAILY_RESET, "00:00")
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}_{entry.entry_id}")
 
-        self._last_update = datetime.now()
-        self._energy_sums = {}  # kWh seit letztem Reset (keys wie 'gridInEnergy', 'PVEnergy' ...)
-        self._last_reset = datetime.now()
+        self._last_update = datetime.now(UTC)
+        self._energy_sums = {}
+        self._last_reset = datetime.now(UTC)
         self._energy_baselines = {}
         self._pv_sums = {}
         self._grid_sums = {}
 
         _LOGGER.info("Update interval is %s", self.update_interval)
 
-    async def _async_update_data(self):  # noqa: C901, PLR0912, PLR0915
+    async def _async_update_data(self) -> dict[str, float | bool | list[str]]:  # noqa: C901, PLR0912, PLR0915
         _LOGGER.debug("Executing _async_update_data")
 
         if not self._energy_sums:
@@ -55,18 +59,18 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                     self._last_reset = (
                         datetime.fromisoformat(last_reset_str)
                         if last_reset_str
-                        else datetime.now()
+                        else datetime.now(UTC)
                     )
-                except Exception:
-                    self._last_reset = datetime.now()
+                except Exception:  # noqa: BLE001
+                    self._last_reset = datetime.now(UTC)
             else:
                 self._energy_sums = {}
                 self._energy_baselines = {}
                 self._pv_sums = {}
                 self._grid_sums = {}
-                self._last_reset = datetime.now()
+                self._last_reset = datetime.now(UTC)
 
-        now = datetime.now()
+        now = datetime.now(UTC)
         elapsed_h = (
             (now - self._last_update).total_seconds() / 3600.0
             if self._last_update
@@ -79,7 +83,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         result = {}
         self._calculated_keys = []
 
-        def get_value(entity_id):
+        def get_value(entity_id: str) -> float | bool | None:
             if not entity_id:
                 return None
             st = state.get(entity_id)
@@ -92,19 +96,11 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                 if unit:
                     unit = unit.lower()
                     if unit in ("kw", "kwatt", "kilowatt"):
-                        return val * 1000  # → W
+                        val = val * 1000  # → W
                     if unit in ("kwh", "kwhours", "kilowatt-hour", "kilowatt hour"):
-                        return val * 1000  # → Wh
-                    if unit in ("w", "watt"):
-                        return val
-                    if unit in ("wh", "watt-hour", "watt hour"):
-                        return val
+                        val = val * 1000  # → Wh
 
-                    _LOGGER.warning(
-                        f"Unknown unit {unit} for {entity_id}, keeping raw value {val}"
-                    )
-
-                return val
+                return val  # noqa: TRY300
 
             except (ValueError, TypeError):
                 if st.state == "on":
@@ -120,12 +116,13 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             if entity_id is not None:
                 value = get_value(entity_id)
                 if value is None:
-                    _LOGGER.debug(f"Entity {entity_id} is not ready!")
-                    raise UpdateFailed(f"Entity {entity_id} is not ready!")
+                    errmsg = f"Entity {entity_id} is not ready!"
+                    _LOGGER.debug(errmsg)
+                    raise UpdateFailed(errmsg)
                 raw_vals[key] = value
-                _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
+                _LOGGER.debug("Value for %s: %s", key, str(raw_vals[key]))
             else:
-                _LOGGER.debug(f"No Entity found for {key}")
+                _LOGGER.debug("No Entity found for %s", key)
                 raw_vals[key] = None
 
         # --- Momentane Werte (Leistung) ---
@@ -147,7 +144,6 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         if raw_vals["car_soc"] is not None:
             result["car_soc"] = raw_vals["car_soc"]
 
-        # --- Energiezähler aktualisieren (entweder Zählerwerte oder Integration aus Leistung) ---
         self._update_energy(
             "grid_in_energy_daily",
             raw_vals["grid_in_energy"],
@@ -174,20 +170,16 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         if raw_vals["battery_energy"] is not None:
             self._energy_sums["battery_energy"] = raw_vals["battery_energy"]
 
-        # Hausverbrauch berechnen: Haushaltsenergie = (Netzbezug + PV-Erzeugung - Netzeinspeisung)
         grid_in = self._energy_sums.get("grid_in_energy")
         grid_out = self._energy_sums.get("grid_out_energy", 0.0)
         pv_e = self._energy_sums.get("pv_energy")
         if grid_in is not None and pv_e is not None:
             home_energy = grid_in + pv_e - grid_out
-            # home_energy kann negativ sein, guarden wir dennoch
             self._energy_sums["home_energy_daily"] = home_energy
 
-        # Füge die aufsummierten Energiewerte in result ein
-        for k, v in self._energy_sums.items():
-            result[k] = v
+        result.update(dict(self._energy_sums.items()))
 
-        def _mix_ratio(key):
+        def _mix_ratio(key: str) -> float:
             pv_sum = self._pv_sums.get(key, 0.0)
             grid_sum = self._grid_sums.get(key, 0.0)
             total = pv_sum + grid_sum
@@ -230,7 +222,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         # --- Reset-Check täglich zur konfigurierten Uhrzeit ---
         try:
             hour, minute = (int(x) for x in self.daily_reset.split(":"))
-        except Exception:
+        except Exception:  # noqa: BLE001
             hour, minute = 0, 0
         reset_time_today = now.replace(
             hour=hour, minute=minute, second=0, microsecond=0
@@ -255,16 +247,22 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                     "last_reset": self._last_reset.isoformat(),
                 }
             )
-        except Exception as exc:
-            _LOGGER.exception("Fehler beim Speichern der Power Mixer Daten: %s", exc)
+        except Exception:
+            _LOGGER.exception("Error while saving stats")
 
-        _LOGGER.debug("Done running update: " + str(result))
+        _LOGGER.debug("Done running update: %s ", str(result))
 
         return result
 
     def _update_energy(
-        self, key, energy_sensor_value, power_sensor_value, elapsed_h, use_baseline=True
-    ):
+        self,
+        key: str,
+        energy_sensor_value: float | None,
+        power_sensor_value: float | None,
+        elapsed_h: float,
+        *,
+        use_baseline: bool = True,
+    ) -> None:
         if energy_sensor_value is not None:
             baseline = 0
             if use_baseline:
@@ -281,15 +279,15 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             self._energy_sums[key] = prev + (power_sensor_value / 1000.0) * elapsed_h
             self._calculated_keys.append(key)
 
-    def _add_mix_energy(
+    def _add_mix_energy(  # noqa: PLR0913
         self,
-        key,
-        pv_power,
-        grid_power,
-        elapsed_h,
-        battery_power=None,
-        battery_pv_factor=None,
-    ):
+        key: str,
+        pv_power: float | None,
+        grid_power: float | None,
+        elapsed_h: float,
+        battery_power: float | None = None,
+        battery_pv_factor: float | None = None,
+    ) -> None:
         if pv_power is None:
             pv_power = 0
         if grid_power is None:
