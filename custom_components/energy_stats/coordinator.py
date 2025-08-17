@@ -21,7 +21,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             hass=hass,
             logger=_LOGGER,
             name="Energy Stats",
-            update_interval=timedelta(seconds=15),
+            update_interval=timedelta(seconds=5),
             config_entry=entry,
         )
         self.entry_id = entry.entry_id
@@ -136,7 +136,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         self._update_energy(
             "grid_out_energy_daily",
             raw_vals["grid_out_energy"],
-            raw_vals["grid_power"],
+            -raw_vals["grid_power"] if raw_vals["grid_power"] is not None else None,
             elapsed_h,
         )
         self._update_energy(
@@ -255,7 +255,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             self._energy_sums[key] = max(0.0, energy_sensor_value - baseline)
             return
 
-        if power_sensor_value is not None and elapsed_h > 0:
+        if power_sensor_value is not None and elapsed_h > 0 and power_sensor_value > 0:
             prev = self._energy_sums.get(key, 0.0)
             self._energy_sums[key] = prev + (power_sensor_value / 1000.0) * elapsed_h
             self._calculated_keys.append(key)
