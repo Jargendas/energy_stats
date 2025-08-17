@@ -1,5 +1,4 @@
 {
-  "version": "1.0.0",
   "domain": "energy_stats",
   "name": "Energy Stats",
   "codeowners": [
@@ -10,7 +9,8 @@
     "http"
   ],
   "documentation": "https://github.com/Jargendas/energy_stats",
-  "issue_tracker": "https://github.com/ludeeus/integration_blueprint/issues",
   "iot_class": "calculated",
-  "requirements": []
+  "issue_tracker": "https://github.com/ludeeus/integration_blueprint/issues",
+  "requirements": [],
+  "version": "1.0.0"
 }
