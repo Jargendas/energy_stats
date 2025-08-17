@@ -1,11 +1,13 @@
-from datetime import datetime, timedelta
 import logging
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
-from homeassistant.helpers.storage import Store
+from datetime import datetime, timedelta
+
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from .const import CONF_DAILY_RESET, SENSOR_KEYS
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.update_coordinator import UpdateFailed
+from homeassistant.helpers.storage import Store
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .const import CONF_DAILY_RESET, SENSOR_KEYS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ STORAGE_KEY = "energy_stats_data"
 
 
 class EnergyStatsCoordinator(DataUpdateCoordinator):
-    def __init__(self, hass: HomeAssistant, entry):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
         self.hass = hass
         super().__init__(
@@ -38,7 +40,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
 
         _LOGGER.info("Update interval is %s", self.update_interval)
 
-    async def _async_update_data(self):
+    async def _async_update_data(self):  # noqa: C901, PLR0912, PLR0915
         _LOGGER.debug("Executing _async_update_data")
 
         if not self._energy_sums:
@@ -97,14 +99,19 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         raw_vals = {}
         for key in SENSOR_KEYS:
             entity_id = self.sensors.get(key)
-            if entity_id is not None and registry.async_get(entity_id) is not None:
-                value = get_value(entity_id)
-                if value is None:
-                    _LOGGER.debug(f"Entity {entity_id} is not ready!")
-                    raise UpdateFailed(f"Entity {entity_id} is not ready!")
-                raw_vals[key] = value
-                _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
+            if entity_id is not None:
+                if registry.async_get(entity_id) is not None:
+                    value = get_value(entity_id)
+                    if value is None:
+                        _LOGGER.debug(f"Entity {entity_id} is not ready!")
+                        raise UpdateFailed(f"Entity {entity_id} is not ready!")
+                    raw_vals[key] = value
+                    _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
+                else:
+                    _LOGGER.debug(f"Entity {entity_id} not in registry!")
+                    raw_vals[key] = None
             else:
+                _LOGGER.debug(f"No Entity found for {key}")
                 raw_vals[key] = None
 
         # --- Momentane Werte (Leistung) ---

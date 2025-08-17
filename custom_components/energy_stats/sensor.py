@@ -1,13 +1,14 @@
+import logging
 from datetime import date, datetime
 from decimal import Decimal
-import logging
 
-from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.typing import StateType
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import CALCULATED_VALUES, DOMAIN
+from .coordinator import EnergyStatsCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ async def async_update_entities(hass, entry, async_add_entities):
         for entity in registry.entities.values()
         if entity.config_entry_id == entry.entry_id
     }
-    _LOGGER.debug("Found existing entities: " + str(existing_entities))
+    _LOGGER.debug("Found existing entities: %s", str(existing_entities))
     coordinator = hass.data[DOMAIN][entry.entry_id]
     new_entities = []
     for key in coordinator.data["calculated_keys"]:
@@ -46,7 +47,7 @@ async def async_update_entities(hass, entry, async_add_entities):
 
 
 class EnergyStatsSensor(CoordinatorEntity, SensorEntity):
-    def __init__(self, coordinator, key):
+    def __init__(self, coordinator: EnergyStatsCoordinator, key: str) -> None:
         super().__init__(coordinator)
         self.coordinator = coordinator
         self._key = key

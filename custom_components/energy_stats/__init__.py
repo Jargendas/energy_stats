@@ -1,15 +1,17 @@
 import logging
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+
+from .api import async_setup_api
 from .const import DOMAIN
 from .coordinator import EnergyStatsCoordinator
-from .api import async_setup_api
 
 _LOGGER = logging.getLogger(__name__)
 PLATFORMS = ["sensor"]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.debug("Executing async_setup_entry (__init__)...")
     coordinator = EnergyStatsCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
