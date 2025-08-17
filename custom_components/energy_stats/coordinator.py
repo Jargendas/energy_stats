@@ -75,7 +75,6 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         self._last_update = now
 
         state = self.hass.states
-        registry = er.async_get(self.hass)
 
         result = {}
         self._calculated_keys = []
@@ -100,16 +99,12 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         for key in SENSOR_KEYS:
             entity_id = self.sensors.get(key)
             if entity_id is not None:
-                if registry.async_get(entity_id) is not None:
-                    value = get_value(entity_id)
-                    if value is None:
-                        _LOGGER.debug(f"Entity {entity_id} is not ready!")
-                        raise UpdateFailed(f"Entity {entity_id} is not ready!")
-                    raw_vals[key] = value
-                    _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
-                else:
-                    _LOGGER.debug(f"Entity {entity_id} not in registry!")
-                    raw_vals[key] = None
+                value = get_value(entity_id)
+                if value is None:
+                    _LOGGER.debug(f"Entity {entity_id} is not ready!")
+                    raise UpdateFailed(f"Entity {entity_id} is not ready!")
+                raw_vals[key] = value
+                _LOGGER.debug(f"Value for {key}: {str(raw_vals[key])}")
             else:
                 _LOGGER.debug(f"No Entity found for {key}")
                 raw_vals[key] = None
