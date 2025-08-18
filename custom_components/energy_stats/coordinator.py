@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .const import CONF_DAILY_RESET, SENSOR_KEYS
 
@@ -32,7 +33,21 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         )
         self.entry_id = entry.entry_id
         self.sensors = {k: entry.data.get(k) for k in SENSOR_KEYS}
-        self.daily_reset = entry.data.get(CONF_DAILY_RESET, "00:00")
+
+        try:
+            self.daily_reset = datetime.strptime(  # noqa: DTZ007
+                str(entry.data.get(CONF_DAILY_RESET, "00:00")), "%H:%M"
+            ).time()
+        except ValueError:
+            try:
+                self.daily_reset = datetime.strptime(  # noqa: DTZ007
+                    str(entry.data.get(CONF_DAILY_RESET, "00:00:00")), "%H:%M:%S"
+                ).time()
+            except ValueError:
+                _LOGGER.exception("Reset time could not be parsed!")
+
+        _LOGGER.debug("Initialized daily_reset type:")
+        _LOGGER.debug(str(self.daily_reset))
         self._store = Store(hass, STORAGE_VERSION, f"{STORAGE_KEY}_{entry.entry_id}")
 
         self._last_update = datetime.now(UTC)
@@ -54,15 +69,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                 self._energy_baselines = stored.get("energy_baselines", {}) or {}
                 self._pv_sums = stored.get("pv_sums", {}) or {}
                 self._grid_sums = stored.get("grid_sums", {}) or {}
-                last_reset_str = stored.get("last_reset")
-                try:
-                    self._last_reset = (
-                        datetime.fromisoformat(last_reset_str)
-                        if last_reset_str
-                        else datetime.now(UTC)
-                    )
-                except Exception:  # noqa: BLE001
-                    self._last_reset = datetime.now(UTC)
+                self._last_reset = datetime.fromisoformat(stored.get("last_reset"))
             else:
                 self._energy_sums = {}
                 self._energy_baselines = {}
@@ -125,7 +132,7 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
                 _LOGGER.debug("No Entity found for %s", key)
                 raw_vals[key] = None
 
-        # --- Momentane Werte (Leistung) ---
+        # Momentary powers
         if raw_vals["grid_power"] is not None:
             result["grid_power"] = raw_vals["grid_power"]
 
@@ -219,15 +226,17 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
             result["car_charging_energy_mix"] = _mix_ratio("car_charging_energy")
             self._calculated_keys.append("car_charging_energy_mix")
 
-        # --- Reset-Check täglich zur konfigurierten Uhrzeit ---
-        try:
-            hour, minute = (int(x) for x in self.daily_reset.split(":"))
-        except Exception:  # noqa: BLE001
-            hour, minute = 0, 0
-        reset_time_today = now.replace(
-            hour=hour, minute=minute, second=0, microsecond=0
+        # Daily reset
+        local_tz = dt_util.DEFAULT_TIME_ZONE
+        reset_time_utc = (
+            datetime.combine(dt_util.now(time_zone=local_tz).date(), self.daily_reset)
+            .replace(tzinfo=local_tz)
+            .astimezone(UTC)
         )
-        if now >= reset_time_today and self._last_reset < reset_time_today:
+
+        _LOGGER.debug("Planned reset time (UTC): %s", str(reset_time_utc))
+        _LOGGER.debug("Current time (UTC): %s", str(now))
+        if now >= reset_time_utc and self._last_reset < reset_time_utc:
             _LOGGER.info("Energy Stats: Resetting daily values to 0.")
             self._energy_sums = {}
             self._energy_baselines = {}

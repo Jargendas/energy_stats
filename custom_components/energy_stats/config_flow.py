@@ -1,6 +1,7 @@
 """Configuration flow for the Energy Stats integration."""
 
 import logging
+from datetime import datetime
 
 import voluptuous as vol
 from homeassistant import config_entries
@@ -25,7 +26,8 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             _LOGGER.debug("Processing user input...")
             data = {k: user_input.get(k) for k in SENSOR_KEYS}
-            data[CONF_DAILY_RESET] = user_input.get(CONF_DAILY_RESET)
+
+            data[CONF_DAILY_RESET] = user_input.get(CONF_DAILY_RESET)  # type: ignore  # noqa: PGH003
 
             if self.source == config_entries.SOURCE_RECONFIGURE:
                 entry = self._get_reconfigure_entry()
@@ -37,13 +39,27 @@ class EnergyStatsConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema_dict = {}
 
-        entries = self._async_current_entries()
-        defaults = entries[0].data if entries else {}
+        entry = None
+        if self.source == config_entries.SOURCE_RECONFIGURE:
+            entry = self._get_reconfigure_entry()
+        defaults = entry.data if entry else {}
 
         # Daily reset time
+        try:
+            daily_reset_default = datetime.strptime(  # noqa: DTZ007
+                str(defaults.get(CONF_DAILY_RESET, "00:00")), "%H:%M"
+            ).time()
+        except ValueError:
+            try:
+                daily_reset_default = datetime.strptime(  # noqa: DTZ007
+                    str(defaults.get(CONF_DAILY_RESET, "00:00:00")), "%H:%M:%S"
+                ).time()
+            except ValueError:
+                _LOGGER.exception("Reset time could not be parsed!")
         schema_dict[
             vol.Required(
-                CONF_DAILY_RESET, default=defaults.get(CONF_DAILY_RESET, "00:00")
+                CONF_DAILY_RESET,
+                default=daily_reset_default.isoformat(),
             )
         ] = selector.TimeSelector()
 
