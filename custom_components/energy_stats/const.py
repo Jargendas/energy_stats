@@ -13,6 +13,7 @@ SENSOR_KEYS = {
     "pv_power": ["power", "optional"],
     "pv_energy": ["energy", "optional"],
     "car_charging_power": ["power", "optional"],
+    "car_charging_limit_power": ["power", "optional"],
     "car_charging_energy": ["energy", "optional"],
     "car_connected": ["plug", "optional"],
     "car_soc": ["battery", "optional"],

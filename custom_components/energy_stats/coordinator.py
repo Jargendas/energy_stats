@@ -139,6 +139,9 @@ class EnergyStatsCoordinator(DataUpdateCoordinator):
         if raw_vals["car_charging_power"] is not None:
             result["car_charging_power"] = raw_vals["car_charging_power"]
 
+        if raw_vals["car_charging_limit_power"] is not None:
+            result["car_charging_limit_power"] = raw_vals["car_charging_limit_power"]
+
         if raw_vals["pv_power"] is not None:
             result["pv_power"] = raw_vals["pv_power"]
 
