@@ -12,5 +12,6 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/ludeeus/integration_blueprint/issues",
   "requirements": [],
+  "single_config_entry": true,
   "version": "1.0.0"
 }
